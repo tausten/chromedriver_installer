@@ -60,7 +60,7 @@ class Base(object):
     def _uninstall(self):
         try:
             subprocess.check_call(
-                shlex.split('pip uninstall chromedriver_installer -y')
+                self._get_popen_args('pip uninstall chromedriver_installer -y')
             )
         except subprocess.CalledProcessError:
             pass
@@ -78,7 +78,13 @@ class Base(object):
 
     def _not_available(self):
         with pytest.raises(OSError):
-            subprocess.check_call(shlex.split('chromedriver --version'))
+            subprocess.check_call(self._get_popen_args('chromedriver --version'))
+
+    def _get_popen_args(self, command):
+        if os.name == 'posix':
+            return self._get_popen_args(command, posix=os.name == 'posix')
+        else:
+            return command
 
 
 class TestFailure(Base):
@@ -91,7 +97,7 @@ class TestFailure(Base):
         )
 
         error_message = subprocess.Popen(
-            shlex.split(command),
+            self._get_popen_args(command),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         ).communicate()[0]
@@ -120,11 +126,11 @@ class VersionBase(Base):
         self._assert_cached_files_exist(cached, remove=not cached)
 
         # After installation...
-        subprocess.check_call(shlex.split(self._get_install_command()))
+        subprocess.check_call(self._get_popen_args(self._get_install_command()))
 
         # ...the chromedriver executable should be available...
         expected_version, error = subprocess.Popen(
-            shlex.split('chromedriver -v'),
+            self._get_popen_args('chromedriver -v'),
             stdout=subprocess.PIPE
         ).communicate()
 
